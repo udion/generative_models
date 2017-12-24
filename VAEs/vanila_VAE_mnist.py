@@ -130,6 +130,7 @@ for itr in range(n_iter):
 	#loss
 	recon_loss = F.binary_cross_entropy(d_out, X)
 	KL_div = tch.mean(0.5 * tch.sum(tch.exp(z_log_sig) + z_mu**2 - 1. - z_log_sig, 1))
+	KL_div /= BATCHSZ*28*28 # <- learnt a lesson, constansdo matter, kind of like units
 	loss = recon_loss + KL_div
 	
 	loss.backward()

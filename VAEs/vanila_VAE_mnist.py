@@ -8,9 +8,17 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import os
+import os, shutil, errno
 import random
 import visdom
+
+#make dir for models if not already present
+try:
+	os.makedirs('./models')
+except OSError as exception:
+	if exception.errno != errno.EEXIST:
+		raise
+
 
 #params for the system
 e_inp_dim = 28*28
@@ -146,3 +154,7 @@ for itr in range(n_iter):
 		d = np.array(d1)
 		vis.images(d, 
 			opts=dict(title='after itr:{}'.format(itr), caption='randomly chosen 64 generated samples after itr: {}'.format(itr)),)
+	if itr%1000 == 999:
+		tch.save(E, './models/E_{}.pth'.format(itr))
+		tch.save(D, './models/D_{}.pth'.format(itr))
+	

@@ -26,9 +26,11 @@ e_out_dim = 100 #z, latent variable
 d_inp_dim = 100
 d_out_dim = 28*28
 n_hidden = 512
+BATCHSZ = 64*2
+
 n_epoch = 100
 n_iter = 1000 #number of iteration per epoch
-BATCHSZ = 64*2
+n_generated_samples = 1000
 
 #visdom client
 vis = visdom.Visdom(port=7777)

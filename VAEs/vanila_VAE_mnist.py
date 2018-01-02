@@ -121,40 +121,62 @@ def sample_z(mu, sig):
 	e = Variable(tch.randn(BATCHSZ, e_out_dim).cuda().double())
 	r = mu + (e*tch.exp(sig/2))
 	return r
-
+	
 #training
-for itr in range(n_iter):
-	X = next(MNISTd)
-	X = Variable(tch.from_numpy(X).cuda())
-	#through the encoder
-	E.zero_grad()
-	z_mu, z_log_sig = E(X)
-	z = sample_z(z_mu, z_log_sig)
-	#through the decoder
-	z = z.cuda()
-	
-	D.zero_grad()
-	d_out = D(z)
-	#loss
-	recon_loss = F.binary_cross_entropy(d_out, X)
-	KL_div = tch.mean(0.5 * tch.sum(tch.exp(z_log_sig) + z_mu**2 - 1. - z_log_sig, 1))
-	KL_div /= BATCHSZ*28*28 # <- learnt a lesson, constansdo matter, kind of like units
-	loss = recon_loss + KL_div
-	
-	loss.backward()
-	optim.step()
-	
-	#print results sometimes
-	if itr%100 == 0:
-		print('randomly chosen 64 generated samples after itr: {}'.format(itr))
-		d = d_out.data.cpu().numpy()[0:64,:]
-		d = d.reshape(-1,1,28,28)
-		d1 = list(d)
-		d1 = random.sample(d1, 64)
-		d = np.array(d1)
-		vis.images(d, 
-			opts=dict(title='after itr:{}'.format(itr), caption='randomly chosen 64 generated samples after itr: {}'.format(itr)),)
-	if itr%1000 == 999:
-		tch.save(E, './models/E_{}.pth'.format(itr))
-		tch.save(D, './models/D_{}.pth'.format(itr))
-	
+for eph in range(n_epoch):
+    training_loss = 0
+    for itr in range(n_iter):
+        #print('dbg1')
+        X = next(MNISTd)
+        X = Variable(tch.from_numpy(X).cuda())
+        #through the encoder
+        E.zero_grad()
+        #print('X shape: {}'.format(X.size()))
+        z_mu, z_log_sig = E(X)
+        #print('z_mu shape, z_log_sig shape: {}, {}'.format(z_mu.size(), z_log_sig.size()))
+        z = sample_z(z_mu, z_log_sig)
+        #print('z shape: {}'.format(z.size()))
+        #through the decoder
+        z = z.cuda()
+        D.zero_grad()
+        d_out = D(z)
+        #loss
+        recon_loss = F.binary_cross_entropy(d_out, X)
+        KL_div = tch.mean(0.5 * tch.sum(tch.exp(z_log_sig) + z_mu**2 - 1. - z_log_sig, 1))
+        KL_div /= BATCHSZ*28*28 # <- learnt a lesson, constansdo matter, kind of like units
+        loss = recon_loss + KL_div
+        training_loss += loss
+
+        loss.backward()
+        optim.step()
+
+        #print results sometimes
+        if itr%100 == 0:
+            print('randomly chosen 64 reconstruted samples after epoch: {}, itr: {}'.format(eph,itr))
+            d = d_out.data.cpu().numpy()
+            d = d.reshape(-1,1,28,28)
+            d1 = list(d)
+            d1 = random.sample(d1, 64)
+            d = np.array(d1)
+            vis.images(d, opts=dict(title='after itr:{}'.format(itr), 
+            	caption='randomly chosen 64 reconstruted samples after epoch: {}, itr: {}'.format(eph,itr)),)
+            #plotter(d)
+    print('====> Epoch: {} Average loss: {:.4f}'.format(eph, training_loss.data.cpu().numpy()[0]/n_iter))
+    #generation after this epoch
+    print('########### generating samples after epoch {} ###########'.format(eph))
+    z_test = tch.randn(n_generated_samples,d_inp_dim)
+    z_test = Variable(z_test.view(-1, d_inp_dim).double().cuda())
+    #print('ztest shape: {}'.format(z_test.size()))
+    y = D(z_test)
+    #print('y size: {}'.format(y.size()))
+    y = y.data.cpu().numpy().reshape(-1,1,28,28)
+    y1 = list(y)
+    y1 = random.sample(y1, 64)
+    y = np.array(y1)
+    vis.images(y, opts=dict(title='after itr:{}'.format(itr), 
+    	caption='randomly chosen 64 generated samples after epoch: {}'.format(eph)),)
+    #plotter(y)
+    #to save the model after this epoch (path w.r.t to server)
+    tch.save(E.state_dict(), './models/E_epoch{}.pth'.format(eph))
+    tch.save(D.state_dict(), './models/D_epoch{}.pth'.format(eph))
+    
